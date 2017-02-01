@@ -2,6 +2,7 @@ import os.path
 import sys
 import getopt
 import threading
+import rti_python
 from rti_python.log import logger
 from rti_python.Comm.EnsembleReceiver import EnsembleReceiver
 from rti_python.Codecs.AdcpCodec import AdcpCodec
