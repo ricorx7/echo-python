@@ -8,8 +8,10 @@ class adcp_io_rabbitmq:
         self.connection = None
         self.channel = None
         self.exchange = ""
+        self.queue_name = ""
+        self.routing_key = "#"
 
-    def connect(self, exchange, host='localhost', user='guest', pw='guest'):
+    def connect(self, exchange, host='localhost', user='guest', pw='guest', routing_key="#"):
         """
         Connect to the RabbitMQ server.  Use the exchange given
         to connect to a specific exchange.
@@ -23,16 +25,33 @@ class adcp_io_rabbitmq:
         :return:
         """
         self.exchange = exchange
+        self.routing_key = routing_key
 
         # Make the connection
         credentials = pika.PlainCredentials(user, pw)
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, credentials=credentials))
+        params = pika.ConnectionParameters(host=host, credentials=credentials)
+        #params = pika.URLParameters('amqp://rico:test@192.168.0.124:5672/%2F')
+        self.connection = pika.BlockingConnection(parameters=params)
+        self.connection.add_on_connection_blocked_callback(self.on_connected)
 
-        # Set a channel with a random name
-        self.channel = self.connection.channel()
+        if self.connection.is_open:
+            logger.info("RabbitMQ connection opened.")
 
-        # Create a Topic exchange if it does not exist
-        self.channel.exchange_declare(exchange=exchange, type='topic')
+            # Set a channel with a random name
+            self.channel = self.connection.channel()
+
+            # Create a queue
+            result = self.channel.queue_declare(exclusive=True)
+            self.queue_name = result.method.queue
+
+            # Create a Topic exchange if it does not exist
+            self.channel.exchange_declare(exchange=self.exchange, type='topic')
+
+        else:
+            logger.error("RabbitMQ connection could not be made.")
+
+    def on_connected(self, frame):
+        logger.error("RabbitMQ is low on resources: " + str(frame))
 
     def send(self, routing_key, message):
         """
@@ -46,6 +65,24 @@ class adcp_io_rabbitmq:
         """
         self.channel.basic_publish(exchange=self.exchange, routing_key=routing_key, body=message)
         logger.debug(" [x] Sent %r:%r" % (routing_key, message))
+
+    def read(self):
+        """
+        Start the loop to wait for incoming messages.  Then handle the messages in handle_msg.
+        """
+        # Wait for messages
+        self.channel.basic_consume(self.handle_msg, queue=self.queue_name)
+
+    def handle_msg(self, channel, method, header, body):
+        """
+        Handle the incoming data from the routing key given.
+        :param channel:
+        :param method:
+        :param header:
+        :param body:
+        :return:
+        """
+        logger.info("%s %s %s %s", channel, method, header, body)
 
     def close(self):
         self.connection.close()

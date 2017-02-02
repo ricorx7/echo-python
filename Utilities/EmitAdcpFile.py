@@ -3,6 +3,7 @@ import sys
 import getopt
 import threading
 import pickle
+import socket
 from log import logger
 from Comm.EnsembleReceiver import EnsembleReceiver
 from Codecs.AdcpCodec import AdcpCodec
@@ -177,6 +178,9 @@ def main(argv):
             verbose = True
             print("Verbose ON")
     print('Input file is: ', inputfile)
+
+    HostIp = socket.gethostbyname(socket.gethostname())
+    print("IP Address: " + str(HostIp))
 
     # Run report on file
     EmitAdcpFile(ens_in_burst, record_path, url=url, user=user, pw=password).process(inputfile)
