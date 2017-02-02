@@ -2,10 +2,12 @@ import os.path
 import sys
 import getopt
 import threading
-import rti_python
-from rti_python.log import logger
-from rti_python.Comm.EnsembleReceiver import EnsembleReceiver
-from rti_python.Codecs.AdcpCodec import AdcpCodec
+import pickle
+from log import logger
+from Comm.EnsembleReceiver import EnsembleReceiver
+from Codecs.AdcpCodec import AdcpCodec
+
+from RabbitMQ.adcp_io_rabbitmq import adcp_io_rabbitmq
 
 
 class EmitAdcpFile:
@@ -33,6 +35,9 @@ class EmitAdcpFile:
 
         self.prev_ens_num = 0
         self.missing_ens = 0
+
+        self.rabbit = adcp_io_rabbitmq()
+        self.rabbit.connect("ADCP")
 
     def process(self, file_path):
         """
@@ -117,6 +122,20 @@ class EmitAdcpFile:
         if ens.IsEnsembleData:
             logger.debug("Codec: " + str(ens.EnsembleData.EnsembleNumber))
             self.ens_codec_count += 1
+
+        # Publish to RabbitMQ
+        self.emit_ens(ens)
+
+    def emit_ens(self, ens):
+        """
+        Emit the ensemble data to the RabbitMQ.
+        :param ens: Ensemble data.
+        """
+        serial = "0000"
+        if ens.IsEnsembleData:
+            serial = ens.EnsembleData.SerialNumber
+
+        self.rabbit.send("adcp." + serial + ".data", pickle.dumps(ens))
 
 
 def main(argv):
