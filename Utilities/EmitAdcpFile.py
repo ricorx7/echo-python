@@ -15,13 +15,15 @@ class EmitAdcpFile:
 
     """
 
-    def __init__(self, ens_in_burst, path, url="localhost"):
+    def __init__(self, ens_in_burst, path, url="localhost", user="guest", pw="guest"):
         """
         Initialize the processor.  Get the number ensembles per burst and
         process the data and store the recorded MATLAB file to the path given.
         :param ens_in_burst: Number of ensembles per waves burst.
         :param path: File path to record the MATLAB file.
         :param url: URL to RabbitMQ server.
+        :param user: Username.
+        :param pw: Password.
         """
         self.ens_receiver = None
         self.ens_reader = None
@@ -38,7 +40,7 @@ class EmitAdcpFile:
         self.missing_ens = 0
 
         self.rabbit = adcp_io_rabbitmq()
-        self.rabbit.connect("ADCP", url)
+        self.rabbit.connect("ADCP", url, user, pw)
 
     def process(self, file_path):
         """
@@ -148,14 +150,16 @@ def main(argv):
     record_path = "recorder/"
     ens_in_burst = 1028
     url = "localhost"
+    user = "guest"
+    password = "guest"
     try:
-        opts, args = getopt.getopt(argv, "hvi:p:e:u:", ["ifile=", "path=", "ens=", "url=", "verbose"])
+        opts, args = getopt.getopt(argv, "hvi:p:e:u:c:w:", ["ifile=", "path=", "ens=", "url=", "user=", "pw=", "verbose"])
     except getopt.GetoptError:
-        print('EmitAdcpFile.py -i <inputfile> -p <path> -e <ens_in_burst> -u <url> -v')
+        print('EmitAdcpFile.py -i <inputfile> -p <path> -e <ens_in_burst> -u <url> -c <username> -w <password> -v')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('EmitAdcpFile.py -i <inputfile> -p <path> -e <ens_in_burst> -u <url> -v')
+            print('EmitAdcpFile.py -i <inputfile> -p <path> -e <ens_in_burst> -u <url> -c <username> -w <password> -v')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
@@ -165,13 +169,17 @@ def main(argv):
             ens_in_burst = arg
         elif opt in ("-u", "--url"):
             url = arg
+        elif opt in ("-c", "--user"):
+            user = arg
+        elif opt in ("-w", "--password"):
+            password = arg
         elif opt in ("-v", "--verbose"):
             verbose = True
             print("Verbose ON")
     print('Input file is: ', inputfile)
 
     # Run report on file
-    EmitAdcpFile(ens_in_burst, record_path, url).process(inputfile)
+    EmitAdcpFile(ens_in_burst, record_path, url=url, user=user, pw=password).process(inputfile)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -9,18 +9,24 @@ class adcp_io_rabbitmq:
         self.channel = None
         self.exchange = ""
 
-    def connect(self, exchange, host='localhost'):
+    def connect(self, exchange, host='localhost', user='guest', pw='guest'):
         """
         Connect to the RabbitMQ server.  Use the exchange given
         to connect to a specific exchange.
+
+        If connecting to RabbitMQ on the localhost, then the username:pw guest:guest will work.
+        But if connecting remotely, a username and password must be given.
         :param exchange: Exchange to connect.
         :param host: Host address.
+        :param user: Username.
+        :param pw: Password.
         :return:
         """
         self.exchange = exchange
 
         # Make the connection
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
+        credentials = pika.PlainCredentials(user, pw)
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host), credentials=credentials)
 
         # Set a channel with a random name
         self.channel = self.connection.channel()
