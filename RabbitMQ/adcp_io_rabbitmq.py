@@ -1,4 +1,5 @@
 import pika
+import sys
 from log import logger
 
 
@@ -11,7 +12,7 @@ class adcp_io_rabbitmq:
         self.queue_name = ""
         self.routing_key = "#"
 
-    def connect(self, exchange, host='localhost', user='guest', pw='guest', routing_key="#"):
+    def connect(self, exchange, host="localhost", user="guest", pw="guest", routing_key="#"):
         """
         Connect to the RabbitMQ server.  Use the exchange given
         to connect to a specific exchange.
@@ -27,28 +28,51 @@ class adcp_io_rabbitmq:
         self.exchange = exchange
         self.routing_key = routing_key
 
+        print("User: " + user)
+        print("PW: " + pw)
+
         # Make the connection
         credentials = pika.PlainCredentials(user, pw)
         params = pika.ConnectionParameters(host=host, credentials=credentials)
         #params = pika.URLParameters('amqp://rico:test@192.168.0.124:5672/%2F')
-        self.connection = pika.BlockingConnection(parameters=params)
-        self.connection.add_on_connection_blocked_callback(self.on_connected)
+        #self.connection = pika.BlockingConnection(parameters=params)
 
-        if self.connection.is_open:
-            logger.info("RabbitMQ connection opened.")
+        # Attempt to connect to RabbitMQ based off params
+        if self.rabbitmq_connect(params):
 
-            # Set a channel with a random name
-            self.channel = self.connection.channel()
+            if self.connection.is_open:
+                logger.info("RabbitMQ connection opened.")
 
-            # Create a queue
-            result = self.channel.queue_declare(exclusive=True)
-            self.queue_name = result.method.queue
+                self.connection.add_on_connection_blocked_callback(self.on_connected)
 
-            # Create a Topic exchange if it does not exist
-            self.channel.exchange_declare(exchange=self.exchange, type='topic')
+                # Set a channel with a random name
+                self.channel = self.connection.channel()
+
+                # Create a queue
+                result = self.channel.queue_declare(exclusive=True)
+                self.queue_name = result.method.queue
+
+                # Create a Topic exchange if it does not exist
+                self.channel.exchange_declare(exchange=self.exchange, type='topic')
 
         else:
             logger.error("RabbitMQ connection could not be made.")
+            sys.exit()
+
+    def rabbitmq_connect(self, params):
+        try:
+            self.connection = pika.BlockingConnection(parameters=params)
+            if not self.connection.is_open:
+                self.rabbitmq_connect(params)
+        except pika.exceptions.ConnectionClosed as ex:
+            logger.error("Error trying to connect to RabbitMQ", ex)
+            return False
+        except Exception as ex:
+            logger.error("Error trying to connect to RabbitMQ", ex)
+            return False
+
+        return True
+
 
     def on_connected(self, frame):
         logger.error("RabbitMQ is low on resources: " + str(frame))
