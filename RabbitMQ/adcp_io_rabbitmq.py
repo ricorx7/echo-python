@@ -26,7 +26,7 @@ class adcp_io_rabbitmq:
 
         # Make the connection
         credentials = pika.PlainCredentials(user, pw)
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host), credentials=credentials)
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, credentials=credentials))
 
         # Set a channel with a random name
         self.channel = self.connection.channel()
