@@ -8,12 +8,17 @@ from log import logger
 from Comm.EnsembleReceiver import EnsembleReceiver
 from Codecs.AdcpCodec import AdcpCodec
 
-from RabbitMQ.adcp_io_rabbitmq import adcp_io_rabbitmq
+from RabbitMQ.rabbitmq_topic import rabbitmq_topic
 
 
 class EmitAdcpFile:
     """
+    Open a file contains ensembles from a waves burst.
+    Process the data into a waves burst file.
 
+    Send the data to the UDP port.
+    Send the data to the RabbitMQ.
+    Get the data directly from the codec.
     """
 
     def __init__(self, ens_in_burst, path, url="localhost", user="guest", pw="guest"):
@@ -40,7 +45,7 @@ class EmitAdcpFile:
         self.prev_ens_num = 0
         self.missing_ens = 0
 
-        self.rabbit = adcp_io_rabbitmq()
+        self.rabbit = rabbitmq_topic()
         self.rabbit.connect("ADCP", url, user, pw)
 
     def process(self, file_path):
@@ -139,7 +144,7 @@ class EmitAdcpFile:
         if ens.IsEnsembleData:
             serial = ens.EnsembleData.SerialNumber
 
-        self.rabbit.send("adcp." + serial + ".data", pickle.dumps(ens))
+        self.rabbit.send("adcp." + serial + ".data.pb", pickle.dumps(ens))
 
 
 def main(argv):

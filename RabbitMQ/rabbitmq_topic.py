@@ -3,7 +3,17 @@ import sys
 from log import logger
 
 
-class adcp_io_rabbitmq:
+class rabbitmq_topic:
+    """
+    Connect to the given RabbitMQ server.  Send and receive messages.
+    This will use a Topic exchange.  The Topic format:
+    adcp.(sn#).(action).(format)
+
+    Ex:
+    adcp.01200000000000423.data.live
+    adcp.01200000000000423.cmd.response
+
+    """
 
     def __init__(self):
         self.connection = None
@@ -34,8 +44,6 @@ class adcp_io_rabbitmq:
         # Make the connection
         credentials = pika.PlainCredentials(user, pw)
         params = pika.ConnectionParameters(host=host, credentials=credentials)
-        #params = pika.URLParameters('amqp://rico:test@192.168.0.124:5672/%2F')
-        #self.connection = pika.BlockingConnection(parameters=params)
 
         # Attempt to connect to RabbitMQ based off params
         if self.rabbitmq_connect(params):
@@ -72,7 +80,6 @@ class adcp_io_rabbitmq:
             return False
 
         return True
-
 
     def on_connected(self, frame):
         logger.error("RabbitMQ is low on resources: " + str(frame))
