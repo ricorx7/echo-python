@@ -89,7 +89,7 @@ ENV/
 .ropeproject
 
 # PyCharm IDE
-.idea
+.idea/
 
 # Recorder data
-recorder
+recorder/

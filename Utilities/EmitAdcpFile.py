@@ -172,7 +172,7 @@ def main(argv):
         elif opt in ("-p", "--path"):
             record_path = arg
         elif opt in ("-e", "--ens"):
-            ens_in_burst = arg
+            ens_in_burst = int(arg)
         elif opt in ("-u", "--url"):
             url = arg
         elif opt in ("-c", "--user"):
