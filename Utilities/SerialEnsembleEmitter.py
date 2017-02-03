@@ -20,10 +20,11 @@ class SerialEnsembleEmitter:
         self.is_alive = True
         self.codec = None
 
-    def connect(self, rabbit_url, rabbit_user, rabbit_pw, comm_port, baud, tcp_port=55056):
+    def connect(self, rabbit_url, rabbit_user, rabbit_pw, comm_port, baud, tcp_port="55056"):
 
         # Create a RabbitMQ connection
-        self.rabbit = rabbitmq_topic.connect("ADCP", rabbit_url, rabbit_user, rabbit_pw)
+        self.rabbit = rabbitmq_topic()
+        self.rabbit.connect(exchange="ADCP", host=rabbit_url, user=rabbit_user, pw=rabbit_pw)
 
         # Create an ADCP codec
         self.codec = AdcpCodec()
@@ -36,7 +37,7 @@ class SerialEnsembleEmitter:
 
         # Start a tcp connection to monitor incoming data and record
         self.serial_server_thread = threading.Thread(name='AdcpWriter',
-                                                     target=self.create_raw_serial_socket(self.tcp_port))
+                                                     target=self.create_raw_serial_socket(tcp_port))
         self.serial_server_thread.start()
 
     def create_raw_serial_socket(self, port):
@@ -76,7 +77,7 @@ class SerialEnsembleEmitter:
                 pass
             except Exception as e:
                 logger.error("Exception in reading data.", e)
-                self.stop_adcp_server()
+                #self.stop_adcp_server()
 
         print("Read Thread turned off")
 
@@ -100,7 +101,8 @@ class SerialEnsembleEmitter:
         if ens.IsEnsembleData:
             serial = ens.EnsembleData.SerialNumber
 
-        self.rabbit.send("adcp." + serial + ".data.live", jsonpickle.dumps(ens))
+        self.rabbit.send("adcp." + serial + ".data.live", jsonpickle.dumps(ens, unpicklable=False))
+        #self.rabbit.send("adcp." + serial + ".data.live", ens.RawData)
 
 
 def main(argv):
@@ -129,7 +131,7 @@ def main(argv):
             url = arg
         elif opt in ("-c", "--user"):
             user = arg
-        elif opt in ("-w", "--password"):
+        elif opt in ("-p", "--password"):
             password = arg
     print('Comm Port: ', comm_port)
     print('Baud Rate: ', baud)
@@ -140,7 +142,7 @@ def main(argv):
 
     # Verify a good serial port was given
     if comm_port in serial_list:
-        SerialEnsembleEmitter.connect(rabbit_url=url, rabbit_user=user, rabbit_pw=password, comm_port=comm_port, baud=baud)
+        SerialEnsembleEmitter().connect(rabbit_url=url, rabbit_user=user, rabbit_pw=password, comm_port=comm_port, baud=baud)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
